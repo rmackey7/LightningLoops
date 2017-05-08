@@ -1,0 +1,141 @@
+import sys, pygame, os
+from pygame.locals import *
+import math
+
+class Fireball(pygame.sprite.Sprite):
+	def __init__(self, gs):
+		pygame.sprite.Sprite.__init__(self)
+		self.gs = gs
+		self.image = pygame.transform.scale(pygame.image.load("fire2.png"), (50, 50))
+		self.rect = self.image.get_rect()
+		self.rect.left = self.rect.left + self.gs.player.rect.left 
+		self.rect.top = self.rect.top + self.gs.player.rect.top 
+		self.speed = [0, 0]
+		pos = pygame.mouse.get_pos()
+		yrat = (pos[1]-self.gs.player.rect.top)
+		xrat = (pos[0]-self.gs.player.rect.left)
+		distance = ((self.rect.center[0]+25 - pos[0])**2 + (self.rect.center[1]+25 - pos[1])**2)**0.5
+		if distance != 0:
+			self.speed[0] = min(math.ceil((xrat/distance)*10),10)
+			self.speed[1] = min(math.ceil((yrat/distance)*10),10)
+		
+	
+	def tick(self):
+		if self.rect.colliderect(self.gs.enemy.rect):
+			self.gs.enemy.health -= 1
+			self.gs.fb.remove(self)
+		if self.rect.top > 420 or self.rect.left > 640 or self.rect.top < -25 or self.rect.left < -25:
+			self.gs.fb.remove(self)
+		else:
+			self.rect = self.rect.move(self.speed)
+			gs.screen.blit(self.image, self.rect)
+		
+class Enemy(pygame.sprite.Sprite):
+	def __init__(self, gs):
+		pygame.sprite.Sprite.__init__(self)
+		self.gs = gs
+		self.image = pygame.transform.scale(pygame.image.load("mario.png"), (100, 100))
+		self.rect = pygame.Rect(530, 310, 100, 100)
+		self.health = 33
+	
+	def tick(self):
+		if self.gs.dead > 0:
+			self.gs.screen.blit(self.image, self.rect)
+			self.gs.dead += 1
+			return
+		elif self.health <= 0:
+			self.gs.dead = 1
+			self.image = pygame.transform.scale(pygame.image.load("pow.bmp"), (300, 300))
+			self.rect = pygame.Rect(340, 120, 300, 300)
+		self.gs.screen.blit(self.image, self.rect)
+		
+class Player(pygame.sprite.Sprite):
+	def __init__(self, gs):
+		pygame.sprite.Sprite.__init__(self)
+		self.gs = gs
+		self.image = pygame.image.load("./retro_mushroom_1up_3.png").convert_alpha()
+		self.other2 = pygame.transform.scale(self.image, (100, 100))
+		self.rect = self.other2.get_rect()
+		self.speed = [0, 0]
+		self.midx = self.rect.width/2 + self.rect.left
+		self.midy = self.rect.height/2 + self.rect.top
+		
+	def tick(self):
+		self.gs.screen.blit(self.other2, self.rect )
+	
+	def move(self, key):
+		
+		if chr(key) == 'k':
+			self.gs.dead = 1
+			
+		if chr(key) == 'q':
+			sys.exit()
+			
+		if key == 273 or key == 119:
+			self.speed[1] = -5
+			self.speed[0] = 0
+	
+		if key == 274 or key == 115:
+			self.speed[1] = 5
+			self.speed[0] = 0
+			
+		if key == 275 or key == 100:
+			self.speed[0] = 5
+			self.speed[1] = 0
+			
+		if key == 276 or key == 97:
+			self.speed[0] = -5
+			self.speed[1] = 0
+			
+		self.rect = self.rect.move(self.speed)
+		self.speed[0] = 0
+		self.speed[1] = 0
+		self.midx = self.rect.width/2 + self.rect.left
+		self.midy = self.rect.height/2 + self.rect.top
+		
+	
+	def rotate(self, pos):
+		angle = 360-math.atan2(pos[1]-self.midy,pos[0]-self.midx)*180/math.pi
+		self.other2 = pygame.transform.scale(pygame.transform.rotate(self.image, angle), (100,100))
+		
+
+class GameSpace:
+	def main(self):
+		pygame.init()
+		self.dead = 0
+		self.size = self.width, self.height = 640, 420
+		self.black = 0,0,0
+		self.screen = pygame.display.set_mode(self.size)
+		self.player = Player(self)
+		self.enemy = Enemy(self)
+		self.clock = pygame.time.Clock()
+		self.fb = []
+		self.screen.fill(self.black)
+		self.screen.blit(self.player.other2, self.player.rect )
+		while 1:
+			self.clock.tick(60)
+			for event in pygame.event.get():
+				if event.type == KEYDOWN:
+					self.player.move(event.key)
+				if event.type == MOUSEMOTION:
+					self.player.rotate(event.pos)
+				if event.type == MOUSEBUTTONDOWN:
+					self.fb.append(Fireball(self))
+			if pygame.mouse.get_pressed()[0]:
+				try:
+					self.fb.append(Fireball(self))
+				except AttributeError:
+					self.fb.append(Fireball(self))
+			
+			self.player.tick()
+			if self.dead < 5:
+				self.enemy.tick()
+			for ball in self.fb:
+				ball.tick()
+			pygame.display.flip()
+			self.screen.fill(self.black)
+		
+if __name__=='__main__':
+	gs = GameSpace()
+	gs.main()
+	

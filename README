@@ -1,0 +1,16 @@
+
+Ryan Mackey
+pygame Primer
+The 1up shroom versus green mario
+
+The arow keys and WASD move the 1 up shroom (the protagonist).
+A click (or a click and hold) will fire (a) fireball(s).
+
+Green Mari0 is sensitive to the fireballs.
+He has 33 health (1 ball takes 1 health)
+Green Mario will not hesitate to go boom if prompted with 33 fireballs.
+
+**Secret Easter Egg** The 'k' key auto-kills luigi
+The 'q' key closes out the window
+
+RUN: >> python3 game
