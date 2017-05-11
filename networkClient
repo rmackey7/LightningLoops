@@ -15,9 +15,11 @@ class Target(pygame.sprite.Sprite):
 		self.gs = gs
 		self.image = pygame.transform.scale(pygame.image.load("like_button.png"), (50, 50))
 		self.rect = self.image.get_rect()
-		self.rect.topleft = x, y
+		self.rect.topleft = int(x), int(y)
 		
-	
+	def destroy(self):
+		self.kill()
+		
 	def tick(self):
 		gs.screen.blit(self.image, self.rect)
 		
@@ -26,14 +28,14 @@ class Fade(pygame.sprite.Sprite):
 		pygame.sprite.Sprite.__init__(self)
 		self.gs = gs
 		size = 50, 50
-		self.image = pygame.transform.scale(pygame.image.load("liked_button.png"), size)
+		self.image = pygame.transform.scale(pygame.image.load("liked_button.png"), size).convert()
 		self.rect = self.image.get_rect()
 		self.rect.center = center
-		self.count = 10
+		self.count = 255
 		
 	def tick(self):
 		self.image.set_alpha(self.count)
-		self.count -= 1
+		self.count -= 45
 		if(self.count <= 0):
 			self.kill()
 		gs.screen.blit(self.image, self.rect)
@@ -48,7 +50,7 @@ class Smoke(pygame.sprite.Sprite):
 		self.image = pygame.transform.scale(pygame.image.load("smoke_plume_0001.png"), size)
 		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0002.png"), size))
 		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0003.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0004.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0004.png"), size))		#free images from Pow Studios
 		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0005.png"), size))
 		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0006.png"), size))
 		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0007.png"), size))
@@ -62,6 +64,7 @@ class Smoke(pygame.sprite.Sprite):
 	def tick(self):
 		if(self.count > 7):
 			self.kill()
+			return
 		self.image = self.images[self.count]
 		self.gs.screen.blit(self.image, self.rect)
 		self.count += 1
@@ -87,7 +90,7 @@ class ClientConnection(Protocol):
 			self.gs.kill1()
 		if "coor" in data:
 			line = data.split(";")
-			self.fb.add(self.gs, line[1], line[2])
+			self.gs.fb.add(Target(self.gs, line[1], line[2]))
 
 class ClientConnectionFactory(ClientFactory):
 	def __init__(self, gs):
@@ -103,10 +106,14 @@ class GameSpace:
 		self.size = self.width, self.height = 800, 600
 		self.black = 0,0,0
 		self.screen = pygame.display.set_mode(self.size)
-		self.image = pygame.image.load("./CliConn.png")
+		self.image = pygame.image.load("./likebook.png")
 		self.rect = self.image.get_rect()
 		self.state = "Connecting"
 		self.clickCount = 0
+		self.enemyCount = 0
+		# self.fb = []
+		# self.smokes = []
+		# self.fades = []
 		self.fb = pygame.sprite.Group()
 		self.smokes = pygame.sprite.Group()
 		self.fades = pygame.sprite.Group()
@@ -127,13 +134,15 @@ class GameSpace:
 		self.state = "Waiting"	
 			
 	def gameTime(self):
-		self.image = pygame.image.load("./CliReady.png")
+		self.image = pygame.image.load("./likebook.png")
 		self.rect = self.image.get_rect()
 		self.state = "Ready"	
 		
 	def kill1(self):
-		self.smokes.add(Smoke(self, self.fb[0].rect.center))
-		self.fb[0].kill()
+		self.enemyCount += 1
+		for targ in self.fb:
+			self.smokes.add(Smoke(self, targ.rect.center))
+			targ.kill()
 		
 	def gameMode1(self):
 		# if(self.ms < time.time() - self.start and self.placed == 0):
@@ -144,8 +153,8 @@ class GameSpace:
 				for targ in self.fb:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
-						#self.smokes.add(Smoke(self, targ.rect.center))
 						self.fades.add(Fade(self, targ.rect.center))
+						#self.fades.append(Fade(self, targ.rect.center))
 						targ.kill()
 						self.CC.transport.write("kill")
 						#print ("Total clicked: ", self.clickCount)
@@ -161,10 +170,11 @@ class GameSpace:
 			smoke.tick()
 		for fade in self.fades:
 			fade.tick()
-		label = self.myfont.render("Hits: {}".format(self.clickCount), 1, (255, 255, 255))
-		self.screen.blit(label, (350, 100))
+		label = self.myfont.render("Hits: {}    Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
+		self.screen.blit(label, (300, 100))
 		pygame.display.flip()
-		self.screen.fill(self.black)
+		self.screen.blit(self.image, self.rect)
+		#self.screen.fill(self.black)
 		return
 	
 	def main(self):
