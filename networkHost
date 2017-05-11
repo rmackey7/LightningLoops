@@ -326,6 +326,10 @@ class GameSpace:
 						self.image = self.original
 					elif event.key == pygame.K_RETURN:
 						self.clientWait()
+						for event in pygame.event.get():
+				#Quit on 'q'
+				if chr(event.key) == 'q':
+					self.quit()
 			if event.type == MOUSEBUTTONDOWN:
 				if self.state == "Connected":
 					#print("launching game mode: ", self.mode)

@@ -1,3 +1,7 @@
+# Conceived of, created, and written by
+# Ryan Mackey and Collin Klenke
+# May 10, 2017
+
 from twisted.internet.protocol import ClientFactory
 from twisted.internet.protocol import Protocol
 from twisted.internet import reactor
@@ -8,28 +12,33 @@ import sys, pygame, os
 from pygame.locals import *
 import math
 import random
+from twisted.internet.defer import DeferredQueue
 
+# Target class - the goal for the user is to click as many of these as possible
 class Target(pygame.sprite.Sprite):
 	def __init__(self, gs, x, y):
 		pygame.sprite.Sprite.__init__(self)
-		self.gs = gs
-		self.image = pygame.transform.scale(pygame.image.load("like_button.png"), (50, 50))
+		self.gs = gs 							#connects the target class to the gamespace
+		self.image = pygame.transform.scale(pygame.image.load("./images/like_button.png"), (50, 50))
 		self.rect = self.image.get_rect()
-		self.rect.topleft = int(x), int(y)
+		self.rect.topleft = int(x), int(y) # built based on input - comes from Host in this class
 		self.dead = 0
 		
 	def destroy(self):
-		self.kill()
+		self.kill() 			#important for cleaning up
 		
+	#blits all target images on each game engine tick
 	def tick(self):
 		gs.screen.blit(self.image, self.rect)
 		
+		
+# The fade class is used to represent an object leaving graphically
 class Fade(pygame.sprite.Sprite):
 	def __init__(self, gs, center):
 		pygame.sprite.Sprite.__init__(self)
 		self.gs = gs
-		size = 50, 50
-		self.image = pygame.transform.scale(pygame.image.load("liked_button.png"), size).convert()
+		size = 50, 50 			#size of the image
+		self.image = pygame.transform.scale(pygame.image.load("./images/liked_button.png"), size).convert()
 		self.rect = self.image.get_rect()
 		self.rect.center = center
 		self.count = 255
@@ -41,23 +50,23 @@ class Fade(pygame.sprite.Sprite):
 			self.kill()
 		gs.screen.blit(self.image, self.rect)
 		
-		
+# Smoke image takes over the target after an enemy clcks it
 class Smoke(pygame.sprite.Sprite):
 	def __init__(self, gs, center):
 		pygame.sprite.Sprite.__init__(self)
 		self.gs = gs
 		self.images = []
 		size = 75, 75
-		self.image = pygame.transform.scale(pygame.image.load("smoke_plume_0001.png"), size)
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0002.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0003.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0004.png"), size))		#free images from Pow Studios
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0005.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0006.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0007.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0008.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0009.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0010.png"), size))
+		self.image = pygame.transform.scale(pygame.image.load("./images/smoke_plume_0001.png"), size)
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0002.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0003.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0004.png"), size))		#free images from Pow Studios
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0005.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0006.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0007.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0008.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0009.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0010.png"), size))
 		self.rect = self.image.get_rect()
 		self.rect.center = center
 		self.count = 0
@@ -71,32 +80,31 @@ class Smoke(pygame.sprite.Sprite):
 		self.count += 1
 
 
+# Connects to the host
 class ClientConnection(Protocol):
 	
 	def __init__(self, gs):
 		self.connected = 0
+			
+		#Used to collect data from host reliably
+		self.buffer = DeferredQueue()
 		self.gs = gs
+		
+		#puts the connection into the Game SPace as a member object - accessibility
 		self.gs.injectCC(self)
 
 	def connectionMade(self):
+		#Connection is up -> waiting for host to start a game
 		self.gs.state = "Wait"
 		self.gs.waitingMode()
 		self.conneced = 1
 		
 		
+	#place all incoming data into the buffer
 	def dataReceived(self, data):
-		if "Ready" in data:
-			self.gs.gameTime()
-		if "kill1" in data:
-			self.gs.kill1()
-		if "coor" in data:
-			line = data.split(";")
-			self.gs.fb.add(Target(self.gs, line[1], line[2]))
-			self.gs.targs.append(Target(self.gs, line[1], line[2]))
-		if "kill2" in data:
-			line = data.split(";")
-			self.gs.kill2(line[1])
+		self.buffer.put(data)
 
+#produce the connection twisted style
 class ClientConnectionFactory(ClientFactory):
 	def __init__(self, gs):
 		self.myconn = ClientConnection(gs)
@@ -105,25 +113,25 @@ class ClientConnectionFactory(ClientFactory):
 		return self.myconn
 
 		
+#Main engine of the game for the client
 class GameSpace:
 	def __init__(self):
 		pygame.init()
 		self.size = self.width, self.height = 800, 600
 		self.black = 0,0,0
 		self.screen = pygame.display.set_mode(self.size)
-		self.connect1 = pygame.image.load("./connecting1.png")
-		self.connect2 = pygame.image.load("./connecting2.png")
-		self.connect3 = pygame.image.load("./connecting3.png")
+		self.connect1 = pygame.image.load("./images/connecting1.png") #image data
+		self.connect2 = pygame.image.load("./images/connecting2.png") #for later use
+		self.connect3 = pygame.image.load("./images/connecting3.png")
 		self.image = self.connect1
 		self.rect = self.image.get_rect()
+		
+		#initial state
 		self.state = "Connecting"
-		self.clickCount = 0
-		self.enemyCount = 0
-		# self.fb = []
-		# self.smokes = []
-		# self.fades = []
-		self.targs = []
-		self.fb = pygame.sprite.Group()
+		self.clickCount = 0 #counts my score during a game
+		self.enemyCount = 0 #counts opponent score during a game
+		self.targs = [] #list to hold sprites in frenzy mode
+		self.fb = pygame.sprite.Group() # Sprite groups for gameplay
 		self.smokes = pygame.sprite.Group()
 		self.fades = pygame.sprite.Group()
 		self.screen.fill(self.black)
@@ -131,88 +139,154 @@ class GameSpace:
 		self.ms = random.randint(30, 120)/100
 		self.placed = 0
 		self.connectCount = 0
+		self.mode = 1
+		self.winner = 0
+		self.finCount = 0
 		
 		self.screen.blit(self.image, self.rect)
 		pygame.display.flip()
 	
+	#Put the ClientConnection into the gs for access and communication
 	def injectCC(self, CC):
 		self.CC = CC
+		self.CC.buffer.get().addCallback(self.processData)
 	
+	#reset all data in gs and prepare for a new game
+	def reset(self):
+		self.image = pygame.image.load("./images/likebook.png")
+		self.state = "Waiting"
+		self.clickCount = 0
+		self.enemyCount = 0
+		self.targs = []
+		for elem in self.fb:
+			elem.kill()
+		for elem in self.fades:
+			elem.kill()
+		for elem in self.smokes:
+			elem.kill()
+		self.placed = 0
+		self.connectCount = 0
+		self.mode = 1
+		self.finCount = 0
+		
+		self.screen.blit(self.image, self.rect)
+		pygame.display.flip()
+	
+	#All data received from the host triggers this function.
+	#The data is processed according to our custom protocol and executed as appropriate
+	def processData(self, data):
+		print data
+		line = data.split(":")
+		for chunk in line:
+			if "Ready" in chunk: #Game is starting!
+				self.gameTime()
+			if "kill1" in chunk: #a kill in game mode 1
+				self.kill1()
+			if "coor" in chunk: # coordinates for a new target!
+				dat = chunk.split(";")
+				self.fb.add(Target(self, dat[1], dat[2]))
+				self.targs.append(Target(self, dat[1], dat[2]))
+			if "kill2" in chunk: # opponent hit in game mode 2
+				dat = chunk.split(";")
+				self.kill2(dat[1])
+			if "mode" in chunk: # WHich game mode we're playing!
+				dat = chunk.split(";")
+				self.mode = int(dat[1])
+		
+		#run this function again when more data comes in
+		self.CC.buffer.get().addCallback(self.processData)
+	
+	# Waiting for the host to pick a game after getting connected
 	def waitingMode(self):
-		self.image = pygame.image.load("./connected.png")
+		self.image = pygame.image.load("./images/connected.png")
 		self.rect = self.image.get_rect()
 		self.state = "Waiting"	
-			
+	
+	# A game has been picked- time to Ready up and enter game mode
 	def gameTime(self):
-		self.image = pygame.image.load("./likebook.png")
+		self.image = pygame.image.load("./images/likebook.png")
 		self.rect = self.image.get_rect()
+		#start running the picked game mode in main loop
 		self.state = "Ready"	
 		
+	#Opponent got a kill in frenzy mode
 	def kill2(self, num):
+		#increment their score
 		self.enemyCount += 1
 		self.targs[int(num)].dead = 1
 		for targ in self.targs:
 			if targ.dead == 1:
+				#run the smoke image
 				self.smokes.add(Smoke(self, targ.rect.center))
 				self.targs.pop(self.targs.index(targ))
 		
+	# Opponent got a kill in original mode
 	def kill1(self):
 		self.enemyCount += 1
 		for targ in self.fb:
+			#run smoke image on location where opponent hit target
 			self.smokes.add(Smoke(self, targ.rect.center))
+			#remove target
 			targ.kill()
 		
+		
+	#FRENZY MODE
 	def gameMode2(self):
-		# if(self.ms < time.time() - self.start):
-			# self.fb.add(Target(self, random.randint(0, 750), random.randint(0, 550)))
-			# self.start = time.time()
-			# self.ms = random.randint(90, 210)/100
-			
+		#check for clicks on targets
 		for event in pygame.event.get():
 			if event.type == pygame.MOUSEBUTTONDOWN:
 				for targ in self.targs:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
 						self.fades.add(Fade(self, targ.rect.center))
-						# targ.kill()
 						self.CC.transport.write("kill2;{}:".format(self.targs.index(targ)))
 						self.targs.pop(self.targs.index(targ))
-						# self.placed = 0
-						# self.start = time.time()
-						# self.ms = random.randint(30, 120)/100
+						break
+			#quit by pressing 'q'
 			if event.type == pygame.KEYDOWN:
 				if chr(event.key) == 'q':
 					self.quit()
+		#tick everything in the game
 		for targ in self.targs:
 			targ.tick()
 		for smoke in self.smokes:
 			smoke.tick()
 		for fade in self.fades:
 			fade.tick()
-		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
-		self.screen.blit(label, (250, 100))
+			
+		#Scoreboard
+		label = self.myfont.render("Likes: {}     Dislikes: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
+		#Winner/ Game End
+		if(self.clickCount >= 15):
+		
+			#Finish state displays who won/ lost, then resets - allows for a new game
+			self.state = "Finish"
+			
+			#Bit tracking who won
+			self.winner = 1
+			
+		elif(self.enemyCount >= 15):
+			self.state = "Finish"
+			self.winner = 0
+		
+#Print everything		
+		self.screen.blit(label, (300, 100))
 		pygame.display.flip()
 		self.screen.blit(self.image, self.rect)
-		#self.screen.fill(self.black)
 		return	
 		
+	#ORIGINAL MODE	
 	def gameMode1(self):
-		# if(self.ms < time.time() - self.start and self.placed == 0):
-			# self.fb.add(Target(self, random.randint(0, 750), random.randint(0, 550)))
-			# self.placed = 1
+		#Check for on-point clicks
 		for event in pygame.event.get():
 			if event.type == pygame.MOUSEBUTTONDOWN:
 				for targ in self.fb:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
 						self.fades.add(Fade(self, targ.rect.center))
-						#self.fades.append(Fade(self, targ.rect.center))
 						targ.kill()
-						self.CC.transport.write("kill1")
-						#print ("Total clicked: ", self.clickCount)
-						# self.placed = 0
-						#self.start = time.time()
-						#self.ms = random.randint(30, 120)/100
+						self.CC.transport.write("kill1:")
+			#Quit on 'q'
 			if event.type == pygame.KEYDOWN:
 				if chr(event.key) == 'q':
 					self.quit()
@@ -222,17 +296,57 @@ class GameSpace:
 			smoke.tick()
 		for fade in self.fades:
 			fade.tick()
-		label = self.myfont.render("Hits: {}    Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
-		self.screen.blit(label, (250, 100))
+		label = self.myfont.render("Likes: {}    Dislikes: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
+		
+		#Checking for winner
+		if(self.clickCount >= 10):
+			self.state = "Finish"
+			self.winner = 1
+		elif(self.enemyCount >= 10):
+			self.state = "Finish"
+			self.winner = 0
+		self.screen.blit(label, (300, 100))
 		pygame.display.flip()
 		self.screen.blit(self.image, self.rect)
 		return
 	
-	def main(self):
-		if self.state == "Ready":
-			self.gameMode2()
-			return
+	#Displays who won for a while, then resets and goes to menu for a new game 
+	def finish(self):
+		if self.finCount < 12:
+			if 	self.winner == 1:
+				label = self.myfont.render("Congrats! You win (:", 1, (255, 255, 255))
+			if self.winner == 0:
+				label = self.myfont.render("Boo you lost loser", 1, (255, 255, 255))
+			self.screen.blit(label, (300,100))
+			pygame.display.flip()
+			self.screen.blit(self.image, self.rect)
+			self.finCount += 1
+		else:
+			self.reset()
 			
+	#Function constantly called by reactor - can lead to a game mode, finished state,
+	#Or the menu
+	def main(self):
+		
+		# Ready --> going to a game mode
+		if self.state == "Ready":
+			if self.mode == 1:
+				self.gameMode1()			
+			elif self.mode == 2:
+				self.gameMode2()
+			return
+		
+		for event in pygame.event.get():
+			#Quit on 'q'
+			if event.type == pygame.KEYDOWN:
+				if chr(event.key) == 'q':
+					self.quit()
+		
+		#Finish --> Someone just won
+		if self.state == "Finish":
+			self.finish()
+			
+		#Connecting --> Displaying alternating images while connecting
 		if self.state == "Connecting":
 			if(self.connectCount < 3):
 				self.image = self.connect1
@@ -244,21 +358,26 @@ class GameSpace:
 				self.connectCount = 0
 		self.connectCount += 1
 		
+
+		
 		self.screen.blit(self.image, self.rect)
 
 		pygame.display.flip()
-		
+	
+	#Quits
 	def quit(self):
-		self.CC.transport.write("quit")
+		self.CC.transport.write("quit:")
 		reactor.stop()
 		
 			
-		
+
 if __name__=='__main__':
 
+	#Constantly calls gs main
 	gs = GameSpace()
 	l = task.LoopingCall(gs.main)
 	l.start(0.01666)
+	#Client Connection possesses gs, and later vice versa
 	ccf = ClientConnectionFactory(gs)
 	reactor.connectTCP("ash.campus.nd.edu", 40035, ccf)
 	reactor.run()
