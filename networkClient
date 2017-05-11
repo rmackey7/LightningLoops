@@ -195,8 +195,6 @@ class GameSpace:
 			if "mode" in chunk: # WHich game mode we're playing!
 				dat = chunk.split(";")
 				self.mode = int(dat[1])
-			if "quit" in chunk:
-				reactor.stop()
 		
 		#run this function again when more data comes in
 		self.CC.buffer.get().addCallback(self.processData)
@@ -371,7 +369,6 @@ class GameSpace:
 	
 	#Quits
 	def quit(self):
-		self.CC.transport.write("quit:")
 		reactor.stop()
 		
 			
