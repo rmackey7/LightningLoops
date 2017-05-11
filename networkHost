@@ -8,6 +8,7 @@ import sys, pygame, os
 import random
 from pygame.locals import *
 import math
+from twisted.internet.defer import DeferredQueue
 
 class Target(pygame.sprite.Sprite):
 	def __init__(self, gs, x, y):
@@ -72,8 +73,10 @@ class ClientConnection(Protocol):
 	
 	def __init__(self, gs):
 		self.connected = 0
+		self.buffer = DeferredQueue()
 		self.gs = gs
 		self.gs.injectCC(self)
+		
 
 	def connectionMade(self):
 		print "client connection made"
@@ -81,13 +84,10 @@ class ClientConnection(Protocol):
 		self.transport.write("host says hello")
 		
 	def dataReceived(self, data):
-		if "kill1" in data:
-			self.gs.kill1()
-		elif "kill2" in data:
-			line = kill2.split(";")
-			self.gs.kill2(line[1])
+		self.buffer.put(data)
 			
 class ClientConnectionFactory(ClientFactory):
+
 	def __init__(self, gs):
 		self.myconn = ClientConnection(gs)
 	
@@ -122,6 +122,18 @@ class GameSpace:
 	
 	def injectCC(self, CC):
 		self.CC = CC
+		self.CC.buffer.get().addCallback(self.processData)
+	
+	def processData(self, data):
+		print data
+		line = data.split(":")
+		for chunk in line:
+			if "kill1" in chunk:
+				self.kill1()
+			elif "kill2" in chunk:
+				dat = chunk.split(";")
+				self.kill2(dat[1])
+			self.CC.buffer.get().addCallback(self.processData)
 	
 	def connPic(self):
 		if(self.state == "Wait"):
@@ -156,7 +168,7 @@ class GameSpace:
 	
 	def kill2(self, num):
 		self.enemyCount += 1
-		self.targs[num].dead = 1
+		self.targs[int(num)].dead = 1
 		for targ in self.targs:
 			if targ.dead == 1:
 				self.smokes.add(Smoke(self, targ.rect.center))
@@ -176,13 +188,13 @@ class GameSpace:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
 						self.fades.add(Fade(self, targ.rect.center))
-						self.CC.transport.write("kill2;{}".format(self.targs.index(targ))
+						self.CC.transport.write("kill2;{}:".format(self.targs.index(targ)))
 						self.targs.pop(self.targs.index(targ))
 						self.start = time.time()
 						self.ms = random.randint(90, 210)/100
-			# if event.type == pygame.KEYDOWN:
-				# if chr(event.key) == 'q':
-					# print "duck"
+			if event.type == pygame.KEYDOWN:
+				if chr(event.key) == 'q':
+					self.quit()
 		for targ in self.targs:
 			targ.tick()
 		for smoke in self.smokes:
@@ -213,7 +225,7 @@ class GameSpace:
 						self.ms = random.randint(30, 120)/100
 			# if event.type == pygame.KEYDOWN:
 				# if chr(event.key) == 'q':
-					# print "fuck"
+					# print "duck"
 		for targ in self.fb:
 			targ.tick()
 		for smoke in self.smokes:
@@ -228,13 +240,13 @@ class GameSpace:
 		return
 	
 	def main(self):
+		
 		if self.state == "Ready":
 			self.gameMode2()
 			return
 			
 		self.screen.blit(self.image, self.rect)
-		
-		
+			
 		for event in pygame.event.get():
 			if event.type == KEYDOWN:
 				print "the s word"
@@ -246,7 +258,8 @@ class GameSpace:
 
 		pygame.display.flip()
 		
-			
+	def quit(self):
+		reactor.stop()
 		
 if __name__=='__main__':
 
