@@ -16,6 +16,7 @@ class Target(pygame.sprite.Sprite):
 		self.image = pygame.transform.scale(pygame.image.load("like_button.png"), (50, 50))
 		self.rect = self.image.get_rect()
 		self.rect.topleft = int(x), int(y)
+		self.dead = 0
 		
 	def destroy(self):
 		self.kill()
@@ -86,11 +87,15 @@ class ClientConnection(Protocol):
 	def dataReceived(self, data):
 		if "Ready" in data:
 			self.gs.gameTime()
-		if "kill" in data:
+		if "kill1" in data:
 			self.gs.kill1()
 		if "coor" in data:
 			line = data.split(";")
 			self.gs.fb.add(Target(self.gs, line[1], line[2]))
+			self.gs.targs.append(Target(self.gs, line[1], line[2]))
+		if "kill2" in data:
+			line = data.split(";")
+			self.gs.kill2(line[1])
 
 class ClientConnectionFactory(ClientFactory):
 	def __init__(self, gs):
@@ -114,6 +119,7 @@ class GameSpace:
 		# self.fb = []
 		# self.smokes = []
 		# self.fades = []
+		self.targs = []
 		self.fb = pygame.sprite.Group()
 		self.smokes = pygame.sprite.Group()
 		self.fades = pygame.sprite.Group()
@@ -138,11 +144,52 @@ class GameSpace:
 		self.rect = self.image.get_rect()
 		self.state = "Ready"	
 		
+	def kill2(self, num):
+		self.enemyCount += 1
+		self.targs[num].dead = 1
+		for targ in self.targs:
+			if targ.dead == 1:
+				self.smokes.add(Smoke(self, targ.rect.center))
+				self.targs.pop(self.targs.index(targ))
+		
 	def kill1(self):
 		self.enemyCount += 1
 		for targ in self.fb:
 			self.smokes.add(Smoke(self, targ.rect.center))
 			targ.kill()
+		
+	def gameMode2(self):
+		# if(self.ms < time.time() - self.start):
+			# self.fb.add(Target(self, random.randint(0, 750), random.randint(0, 550)))
+			# self.start = time.time()
+			# self.ms = random.randint(90, 210)/100
+			
+		for event in pygame.event.get():
+			if event.type == pygame.MOUSEBUTTONDOWN:
+				for targ in self.targs:
+					if targ.rect.collidepoint(event.pos):
+						self.clickCount += 1
+						self.smokes.add(Fade(self, targ.rect.center))
+						# targ.kill()
+						self.CC.transport.write("kill2;{}".format(self.targs.index(targ))
+						self.targs.pop(self.targs.index(targ))
+						# self.placed = 0
+						# self.start = time.time()
+						# self.ms = random.randint(30, 120)/100
+			# if event.type == pygame.KEYDOWN:
+				# if chr(event.key) == 'q':
+					# print "duck"
+		for targ in self.targs:
+			targ.tick()
+		for smoke in self.smokes:
+			smoke.tick()
+		for fade in fades:
+			fade.tick()
+		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
+		self.screen.blit(label, (250, 100))
+		pygame.display.flip()
+		self.screen.fill(self.black)
+		return	
 		
 	def gameMode1(self):
 		# if(self.ms < time.time() - self.start and self.placed == 0):
@@ -156,14 +203,14 @@ class GameSpace:
 						self.fades.add(Fade(self, targ.rect.center))
 						#self.fades.append(Fade(self, targ.rect.center))
 						targ.kill()
-						self.CC.transport.write("kill")
+						self.CC.transport.write("kill1")
 						#print ("Total clicked: ", self.clickCount)
 						# self.placed = 0
 						#self.start = time.time()
 						#self.ms = random.randint(30, 120)/100
 			# if event.type == pygame.KEYDOWN:
 				# if chr(event.key) == 'q':
-					# print "fuck"
+					# print "duck"
 		for targ in self.fb:
 			targ.tick()
 		for smoke in self.smokes:
@@ -171,11 +218,12 @@ class GameSpace:
 		for fade in self.fades:
 			fade.tick()
 		label = self.myfont.render("Hits: {}    Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
-		self.screen.blit(label, (300, 100))
+		self.screen.blit(label, (250, 100))
 		pygame.display.flip()
 		self.screen.blit(self.image, self.rect)
-		#self.screen.fill(self.black)
 		return
+	
+	defgameMode2(self):
 	
 	def main(self):
 		if self.state == "Ready":
@@ -192,7 +240,7 @@ if __name__=='__main__':
 
 	gs = GameSpace()
 	l = task.LoopingCall(gs.main)
-	l.start(0.1)
+	l.start(0.01666)
 	ccf = ClientConnectionFactory(gs)
 	reactor.connectTCP("ash.campus.nd.edu", 40035, ccf)
 	reactor.run()
