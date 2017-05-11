@@ -1,16 +1,35 @@
 
 Ryan Mackey
-pygame Primer
-The 1up shroom versus green mario
+Collin Klenke
 
-The arow keys and WASD move the 1 up shroom (the protagonist).
-A click (or a click and hold) will fire (a) fireball(s).
+We have created "likebook" which is a competitve reaction game which satirizes 
+the modern era's infatuation with liking things on the internet.
+To start it up, simply run networkHost first on one machine and
+networkClient on another (or the same if you like playing with fire)
+Use the arrow keys and enter on the Host side to select the game mode.
 
-Green Mari0 is sensitive to the fireballs.
-He has 33 health (1 ball takes 1 health)
-Green Mario will not hesitate to go boom if prompted with 33 fireballs.
+Within likebook, there are two game modes: original and frenzy.
 
-**Secret Easter Egg** The 'k' key auto-kills luigi
-The 'q' key closes out the window
+Original is the more basic game mode. In it, the two users (host and client)
+duke it out on a game of preparation, talent, and pure luck. A random amount of
+time is assigned (between .5 and 2 seconds) and once this time has passed,
+a like button will appear on the screen. It is then a baulderdash to see
+who has it in them to beat the other to liking it first. "First!" they might
+exclaim. If you are successful in smashing that like button first, you will
+see it turn blue and slowly fade away, and watch your score or "likes" increase
+by one. However, if you are the unlucky soul to click second, you will
+be greeted with a puff and a dissappearance Houdini himself would be impressed
+by. As you watch your chances dissipate in thin air, you will notice the number
+next to "dislikes" has increased by one - as your opponent is one step closer
+to taking you down. Ultimately, it is a race to see who can click the like button
+10 times.
 
-RUN: >> python3 game
+Perhaps you would rather play the frenzy mode. In which case, you and your opponent
+will be bombarded by like buttons across the screen, each with equal chance to 
+snag as many as possible. The puffs will paint your screen as the game goes on, while
+you struggle to get any of those beautiful little thumbs to turn blue. It's a race 
+to 15 for this one. I wish you good luck, as you will need it.
+
+I would not suggest playing likebook with your friends, or they might not
+be your friends for much longer. 
+Good luck, and have fun.

@@ -1,6 +1,5 @@
 #Created and written by Collin Klenke and Ryan Mackey
 #5.10.17
-
 from twisted.internet.protocol import ClientFactory
 from twisted.internet.protocol import Protocol
 from twisted.internet import reactor
