@@ -1,0 +1,97 @@
+from twisted.internet.protocol import ClientFactory
+from twisted.internet.protocol import Protocol
+from twisted.internet import reactor
+from twisted.internet import task
+import time
+from twisted.internet import defer
+import sys, pygame, os
+from pygame.locals import *
+import math
+
+class ClientConnection(Protocol):
+	
+	def __init__(self, gs):
+		self.connected = 0
+		self.gs = gs
+		self.gs.injectCC(self)
+
+	def connectionMade(self):
+		print "client connection made"
+		self.gs.connPic()
+		self.transport.write("host says hello")
+		
+	def dataReceived(self, data):
+		print "into client conn:",data
+		#self.gs.main()
+
+class ClientConnectionFactory(ClientFactory):
+	def __init__(self, gs):
+		self.myconn = ClientConnection(gs)
+	
+	def buildProtocol(self, addr):
+		return self.myconn
+
+		
+class GameSpace:
+	def __init__(self):
+		pygame.init()
+		self.size = self.width, self.height = 800, 600
+		self.black = 0,0,0
+		self.screen = pygame.display.set_mode(self.size)
+		self.image = pygame.image.load("./Menu.png")
+		self.rect = self.image.get_rect()
+		self.state = "Menu"
+		self.connected = 0
+		
+		self.screen.blit(self.image, self.rect)
+		pygame.display.flip()
+		
+	
+	def injectCC(self, CC):
+		self.CC = CC
+	
+	def connPic(self):
+		if(self.state == "Wait"):
+			self.image = pygame.image.load("./ClientConnected.png")
+			self.rect = self.image.get_rect()
+			self.state = "Connected"
+		self.connected = 1
+	
+	def gameTime(self):
+		self.CC.transport.write("Ready")
+		self.image = pygame.image.load("./HostReady.png")
+		self.rect = self.image.get_rect()
+		self.state = "Ready"		
+	
+	def clientWait(self):
+		self.state = "Wait"
+		if(self.connected != 1):
+			self.image = pygame.image.load("./Waiting1.png")
+			self.rect = self.image.get_rect()
+		else:
+			self.connPic()
+	
+	def main(self):
+		self.screen.blit(self.image, self.rect)
+		
+		for event in pygame.event.get():
+			if event.type == KEYDOWN:
+				print "the s word"
+			if event.type == MOUSEBUTTONDOWN:
+				if self.state == "Menu":
+					self.clientWait()
+				if self.state == "Connected":
+					self.gameTime()
+
+		pygame.display.flip()
+		
+			
+		
+if __name__=='__main__':
+
+	gs = GameSpace()
+	l = task.LoopingCall(gs.main)
+	l.start(0.01666)
+	ccf = ClientConnectionFactory(gs)
+	reactor.listenTCP(40035, ccf) # client port
+	reactor.run()
