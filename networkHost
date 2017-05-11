@@ -1,3 +1,6 @@
+#Created and written by Collin Klenke and Ryan Mackey
+#5.10.17
+
 from twisted.internet.protocol import ClientFactory
 from twisted.internet.protocol import Protocol
 from twisted.internet import reactor
@@ -10,54 +13,54 @@ from pygame.locals import *
 import math
 from twisted.internet.defer import DeferredQueue
 
-class Target(pygame.sprite.Sprite):
+class Target(pygame.sprite.Sprite):				
 	def __init__(self, gs, x, y):
 		pygame.sprite.Sprite.__init__(self)
 		self.gs = gs
-		self.image = pygame.transform.scale(pygame.image.load("like_button.png"), (50, 50))
+		self.image = pygame.transform.scale(pygame.image.load("./images/like_button.png"), (50, 50))
 		self.rect = self.image.get_rect()
 		self.rect.topleft = x, y
-		self.gs.CC.transport.write("coor;{};{}".format(x,y))
-		self.dead = 0
+		self.gs.CC.transport.write("coor;{};{}:".format(x,y))			#only need to send the coordinates of the target to the client
+		self.dead = 0													#used for game mode 2 deletion checking
 		
 	
 	def tick(self):
 		gs.screen.blit(self.image, self.rect)
 		
-class Fade(pygame.sprite.Sprite):
+class Fade(pygame.sprite.Sprite):									#animation for when you click before the other player
 	def __init__(self, gs, center):
 		pygame.sprite.Sprite.__init__(self)
 		self.gs = gs
 		size = 50, 50
-		self.image = pygame.transform.scale(pygame.image.load("liked_button.png"), size)
+		self.image = pygame.transform.scale(pygame.image.load("./images/liked_button.png"), size).convert()
 		self.rect = self.image.get_rect()
 		self.rect.center = center
-		self.count = 10
+		self.count = 255
 		
-	def tick(self):
+	def tick(self):												#creates a fade out illusion
 		self.image.set_alpha(self.count)
-		self.count -= 1
+		self.count -= 45
 		if(self.count <= 0):
 			self.kill()
 		gs.screen.blit(self.image, self.rect)
 		
 		
-class Smoke(pygame.sprite.Sprite):
+class Smoke(pygame.sprite.Sprite):							#animation for when other player clicks before you do
 	def __init__(self, gs, center):
 		pygame.sprite.Sprite.__init__(self)
 		self.gs = gs
 		self.images = []
 		size = 75, 75
-		self.image = pygame.transform.scale(pygame.image.load("smoke_plume_0001.png"), size)
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0002.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0003.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0004.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0005.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0006.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0007.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0008.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0009.png"), size))
-		self.images.append(pygame.transform.scale(pygame.image.load("smoke_plume_0010.png"), size))
+		self.image = pygame.transform.scale(pygame.image.load("./images/smoke_plume_0001.png"), size)
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0002.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0003.png"), size))	
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0004.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0005.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0006.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0007.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0008.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0009.png"), size))
+		self.images.append(pygame.transform.scale(pygame.image.load("./images/smoke_plume_0010.png"), size))
 		self.rect = self.image.get_rect()
 		self.rect.center = center
 		self.count = 0
@@ -65,10 +68,12 @@ class Smoke(pygame.sprite.Sprite):
 	def tick(self):
 		if(self.count > 7):
 			self.kill()
-		self.image = self.images[self.count]
+		self.image = self.images[self.count]			#iterate through array of images to display change
 		self.gs.screen.blit(self.image, self.rect)
 		self.count += 1
 
+		
+#########CONNECTION#######
 class ClientConnection(Protocol):
 	
 	def __init__(self, gs):
@@ -81,7 +86,6 @@ class ClientConnection(Protocol):
 	def connectionMade(self):
 		print "client connection made"
 		self.gs.connPic()
-		self.transport.write("host says hello")
 		
 	def dataReceived(self, data):
 		self.buffer.put(data)
@@ -95,13 +99,21 @@ class ClientConnectionFactory(ClientFactory):
 		return self.myconn
 
 		
+#####GAME######
 class GameSpace:
 	def __init__(self):
 		pygame.init()
 		self.size = self.width, self.height = 800, 600
 		self.black = 0,0,0
 		self.screen = pygame.display.set_mode(self.size)
-		self.image = pygame.image.load("./Menu.png")
+		
+		self.original = pygame.image.load("./images/original.png")
+		self.frenzy = pygame.image.load("./images/frenzy.png")
+		self.connect1 = pygame.image.load("./images/connecting1.png")			# load images before hand to reduce overhead
+		self.connect2 = pygame.image.load("./images/connecting2.png")
+		self.connect3 = pygame.image.load("./images/connecting3.png")
+
+		self.image = self.original
 		self.rect = self.image.get_rect()
 		self.state = "Menu"
 		self.connected = 0
@@ -109,24 +121,49 @@ class GameSpace:
 		self.fb = pygame.sprite.Group()
 		self.targs = []
 		self.smokes = pygame.sprite.Group()
-		self.fades = pygame.sprite.Group()
+		self.fades = pygame.sprite.Group()										# these groups are for the sprites
 		self.screen.fill(self.black)
 		self.myfont = pygame.font.Font(None, 35)
 		self.ms = random.randint(30, 120)/100
-		self.placed = 0
-		self.enemyCount = 0
+		self.placed = 0							#for game mode 1, only one thumb can be placed at a time
+		self.enemyCount = 0						#number of times the enemy has clicked before you
+		self.winner = 0							#set to 1 if you win, 0 if you lose
+		self.connectCount = 0					#used for switching between three "connecting" pictues, to display the illusion of progress
+		self.mode = 1							#set depending on the game mode
+		self.finCount = 0						#set for the length of the "finish" state
 		
 		self.screen.blit(self.image, self.rect)
 		pygame.display.flip()
-		
 	
-	def injectCC(self, CC):
+	def reset(self):							#start over after a game is finished, clean up everything
+		self.image = self.original
+		self.rect = self.image.get_rect()
+		self.state = "Menu"
+		self.clickCount = 0
+		for element in self.smokes:
+			element.kill()
+		for element in self.fades:
+			element.kill()
+		for element in self.fb:
+			element.kill()
+		self.targs = []
+		self.placed = 0
+		self.enemyCount = 0
+		self.finCount = 0
+		
+		self.connectCount = 0
+		self.mode = 1
+		
+		self.screen.blit(self.image, self.rect)
+		pygame.display.flip()
+	
+	def injectCC(self, CC):										#establish client connection in gs
 		self.CC = CC
 		self.CC.buffer.get().addCallback(self.processData)
 	
 	def processData(self, data):
 		print data
-		line = data.split(":")
+		line = data.split(":")									#terminate our data with ':' to deal with multiple data packets sent as one
 		for chunk in line:
 			if "kill1" in chunk:
 				self.kill1()
@@ -136,38 +173,39 @@ class GameSpace:
 			self.CC.buffer.get().addCallback(self.processData)
 	
 	def connPic(self):
-		if(self.state == "Wait"):
-			self.image = pygame.image.load("./ClientConnected.png")
+		if(self.state == "Wait"):													#host and client are connected
+			self.image = pygame.image.load("./images/connectedForHost.png")		
 			self.rect = self.image.get_rect()
 			self.state = "Connected"
+			self.CC.transport.write("mode;{}:".format(self.mode))
 		self.connected = 1
 	
-	def gameTime(self):
-		self.CC.transport.write("Ready")
-		self.image = pygame.image.load("./HostReady.png")
+	def gameTime(self):															#host has clicked begin - start the game
+		self.CC.transport.write("Ready:mode;{}:".format(self.mode))
+		self.image = pygame.image.load("./images/likebook.png")
 		self.rect = self.image.get_rect()
 		self.state = "Ready"
 		self.start = time.time()
 	
-	def clientWait(self):
+	def clientWait(self):														#waiting for client to connect
 		self.state = "Wait"
 		if(self.connected != 1):
-			self.image = pygame.image.load("./Waiting1.png")
+			self.image = self.connect1
 			self.rect = self.image.get_rect()
 		else:
 			self.connPic()
 	
-	def kill1(self):
+	def kill1(self):															#recieved data from client indicating they clicked the thumb first
 		self.enemyCount += 1
 		for targ in self.fb:
-			self.smokes.add(Smoke(self, targ.rect.center))
+			self.smokes.add(Smoke(self, targ.rect.center))						#send smoke animation
 			targ.kill()
 			self.placed = 0
 			self.start = time.time()
-			self.ms = random.randint(30, 120)/100
+			self.ms = random.randint(30, 120)/100								#initialize new time for next target
 	
 	def kill2(self, num):
-		self.enemyCount += 1
+		self.enemyCount += 1													#gamemode 2's version of kill sends an index
 		self.targs[int(num)].dead = 1
 		for targ in self.targs:
 			if targ.dead == 1:
@@ -178,20 +216,21 @@ class GameSpace:
 
 	def gameMode2(self):
 		if(self.ms < time.time() - self.start):
-			self.targs.append(Target(self, random.randint(0, 750), random.randint(0, 550)))
-			self.start = time.time()
-			self.ms = random.randint(90, 210)/100
+			self.targs.append(Target(self, random.randint(0, 750), random.randint(0, 550)))	#generates new thumb in random location
+			self.start = time.time()														
+			self.ms = random.randint(90, 210)/100											#time for next thumb to appear
 			
 		for event in pygame.event.get():
 			if event.type == pygame.MOUSEBUTTONDOWN:
 				for targ in self.targs:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
-						self.fades.add(Fade(self, targ.rect.center))
-						self.CC.transport.write("kill2;{}:".format(self.targs.index(targ)))
+						self.fades.add(Fade(self, targ.rect.center))							#start fade animation to let user know they got the thumb
+						self.CC.transport.write("kill2;{}:".format(self.targs.index(targ)))		#send info to client that we clicked first
 						self.targs.pop(self.targs.index(targ))
 						self.start = time.time()
 						self.ms = random.randint(90, 210)/100
+						break
 			if event.type == pygame.KEYDOWN:
 				if chr(event.key) == 'q':
 					self.quit()
@@ -201,10 +240,17 @@ class GameSpace:
 			smoke.tick()
 		for fade in self.fades:
 			fade.tick()
-		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
-		self.screen.blit(label, (250, 100))
+		label = self.myfont.render("Likes: {}     Dislikes: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))	#scoreboard
+		if(self.clickCount >= 15):
+			self.state = "Finish"
+			self.winner = 1
+		elif(self.enemyCount >= 15):									#check to see if someone won
+			self.state = "Finish"
+			self.winner = 0
+		self.screen.blit(label, (300, 100))
 		pygame.display.flip()
-		self.screen.fill(self.black)
+		self.screen.blit(self.image, self.rect)
+		#self.screen.fill(self.black)
 		return
 	
 	def gameMode1(self):
@@ -216,48 +262,91 @@ class GameSpace:
 				for targ in self.fb:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
-						self.fades.add(Fade(self, targ.rect.center))
+						self.fades.add(Fade(self, targ.rect.center))			#mostly same as above, just only one can be placed at a time
 						targ.kill()
-						self.CC.transport.write("kill")
+						self.CC.transport.write("kill1:")
 						#print ("Total clicked: ", self.clickCount)
 						self.placed = 0
 						self.start = time.time()
 						self.ms = random.randint(30, 120)/100
-			# if event.type == pygame.KEYDOWN:
-				# if chr(event.key) == 'q':
-					# print "duck"
+						break
+			if event.type == pygame.KEYDOWN:
+				if chr(event.key) == 'q':
+					self.quit()
 		for targ in self.fb:
 			targ.tick()
 		for smoke in self.smokes:
 			smoke.tick()
-		for fades in self.fades:
+		for fade in self.fades:
 			fade.tick()
-		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
-		self.screen.blit(label, (250, 100))
+		label = self.myfont.render("Likes: {}     Dislikes: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
+		if(self.clickCount >= 10):
+			self.winner = 1
+			self.state = "Finish"
+		elif(self.enemyCount >= 10):
+			self.winner = 0
+			self.state = "Finish"
+		self.screen.blit(label, (300, 100))
 		pygame.display.flip()
-		self.screen.fill(self.black)	
+		self.screen.blit(self.image, self.rect)
+		#self.screen.fill(self.black)	
 				#send ms
 		return
 	
 	def main(self):
 		
 		if self.state == "Ready":
-			self.gameMode2()
+			if (self.mode == 1):
+				self.gameMode1()
+			else:
+				self.gameMode2()
 			return
 			
-		self.screen.blit(self.image, self.rect)
+		if self.state == "Finish":
+			self.finish()
+			
+		if self.state == "Wait":
+			if(self.connectCount < 3):
+				self.image = self.connect1
+			elif(self.connectCount < 6):
+				self.image = self.connect2
+			elif(self.connectCount < 9):
+				self.image = self.connect3
+			else:
+				self.connectCount = 0
+			self.connectCount += 1
 			
 		for event in pygame.event.get():
 			if event.type == KEYDOWN:
-				print "the s word"
-			if event.type == MOUSEBUTTONDOWN:
 				if self.state == "Menu":
-					self.clientWait()
+					if event.key == pygame.K_DOWN:
+						self.mode = 2
+						self.image = self.frenzy
+					elif event.key == pygame.K_UP:									#selecting the game mode
+						self.mode = 1
+						self.image = self.original
+					elif event.key == pygame.K_RETURN:
+						self.clientWait()
+			if event.type == MOUSEBUTTONDOWN:
 				if self.state == "Connected":
+					#print("launching game mode: ", self.mode)
 					self.gameTime()
 
+		self.screen.blit(self.image, self.rect)
 		pygame.display.flip()
-		
+
+	def finish(self):
+		if(self.finCount>=15):
+			self.reset()
+		if(self.winner == 0):
+			label = self.myfont.render("Wow! You lose!", 1, (255, 255, 255))
+		else:																		#winner declared
+			label = self.myfont.render("Congrats! You win!", 1, (255, 255, 255))
+		self.finCount += 1
+		self.screen.blit(label, (275, 100))
+		pygame.display.flip()
+		self.screen.blit(self.image, self.rect)
+	
 	def quit(self):
 		reactor.stop()
 		
