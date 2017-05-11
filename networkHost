@@ -159,7 +159,6 @@ class GameSpace:
 		self.targs[num].dead = 1
 		for targ in self.targs:
 			if targ.dead == 1:
-				self.targs.pop(self.targs.index(targ))
 				self.smokes.add(Smoke(self, targ.rect.center))
 				self.targs.pop(self.targs.index(targ))
 				# self.start = time.time()
@@ -167,7 +166,7 @@ class GameSpace:
 
 	def gameMode2(self):
 		if(self.ms < time.time() - self.start):
-			self.fb.add(Target(self, random.randint(0, 750), random.randint(0, 550)))
+			self.targs.append(Target(self, random.randint(0, 750), random.randint(0, 550)))
 			self.start = time.time()
 			self.ms = random.randint(90, 210)/100
 			
@@ -176,7 +175,7 @@ class GameSpace:
 				for targ in self.targs:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
-						self.smokes.add(Fade(self, targ.rect.center))
+						self.fades.add(Fade(self, targ.rect.center))
 						self.CC.transport.write("kill2;{}".format(self.targs.index(targ))
 						self.targs.pop(self.targs.index(targ))
 						self.start = time.time()
@@ -188,6 +187,8 @@ class GameSpace:
 			targ.tick()
 		for smoke in self.smokes:
 			smoke.tick()
+		for fade in self.fades:
+			fade.tick()
 		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
 		self.screen.blit(label, (250, 100))
 		pygame.display.flip()
@@ -203,7 +204,7 @@ class GameSpace:
 				for targ in self.fb:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
-						self.smokes.add(Fade(self, targ.rect.center))
+						self.fades.add(Fade(self, targ.rect.center))
 						targ.kill()
 						self.CC.transport.write("kill")
 						#print ("Total clicked: ", self.clickCount)
@@ -217,6 +218,8 @@ class GameSpace:
 			targ.tick()
 		for smoke in self.smokes:
 			smoke.tick()
+		for fades in self.fades:
+			fade.tick()
 		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
 		self.screen.blit(label, (250, 100))
 		pygame.display.flip()
@@ -226,7 +229,7 @@ class GameSpace:
 	
 	def main(self):
 		if self.state == "Ready":
-			self.gameMode1()
+			self.gameMode2()
 			return
 			
 		self.screen.blit(self.image, self.rect)

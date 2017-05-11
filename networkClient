@@ -169,7 +169,7 @@ class GameSpace:
 				for targ in self.targs:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
-						self.smokes.add(Fade(self, targ.rect.center))
+						self.fades.add(Fade(self, targ.rect.center))
 						# targ.kill()
 						self.CC.transport.write("kill2;{}".format(self.targs.index(targ))
 						self.targs.pop(self.targs.index(targ))
@@ -183,7 +183,7 @@ class GameSpace:
 			targ.tick()
 		for smoke in self.smokes:
 			smoke.tick()
-		for fade in fades:
+		for fade in self.fades:
 			fade.tick()
 		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
 		self.screen.blit(label, (250, 100))
@@ -223,11 +223,9 @@ class GameSpace:
 		self.screen.blit(self.image, self.rect)
 		return
 	
-	defgameMode2(self):
-	
 	def main(self):
 		if self.state == "Ready":
-			self.gameMode1()
+			self.gameMode2()
 			return
 			
 		self.screen.blit(self.image, self.rect)
