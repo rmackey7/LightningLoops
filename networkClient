@@ -111,7 +111,10 @@ class GameSpace:
 		self.size = self.width, self.height = 800, 600
 		self.black = 0,0,0
 		self.screen = pygame.display.set_mode(self.size)
-		self.image = pygame.image.load("./likebook.png")
+		self.connect1 = pygame.image.load("./connecting1.png")
+		self.connect2 = pygame.image.load("./connecting2.png")
+		self.connect3 = pygame.image.load("./connecting3.png")
+		self.image = self.connect1
 		self.rect = self.image.get_rect()
 		self.state = "Connecting"
 		self.clickCount = 0
@@ -127,6 +130,7 @@ class GameSpace:
 		self.myfont = pygame.font.Font(None, 35)
 		self.ms = random.randint(30, 120)/100
 		self.placed = 0
+		self.connectCount = 0
 		
 		self.screen.blit(self.image, self.rect)
 		pygame.display.flip()
@@ -135,7 +139,7 @@ class GameSpace:
 		self.CC = CC
 	
 	def waitingMode(self):
-		self.image = pygame.image.load("./CliWait.png")
+		self.image = pygame.image.load("./connected.png")
 		self.rect = self.image.get_rect()
 		self.state = "Waiting"	
 			
@@ -146,7 +150,7 @@ class GameSpace:
 		
 	def kill2(self, num):
 		self.enemyCount += 1
-		self.targs[num].dead = 1
+		self.targs[int(num)].dead = 1
 		for targ in self.targs:
 			if targ.dead == 1:
 				self.smokes.add(Smoke(self, targ.rect.center))
@@ -171,14 +175,14 @@ class GameSpace:
 						self.clickCount += 1
 						self.fades.add(Fade(self, targ.rect.center))
 						# targ.kill()
-						self.CC.transport.write("kill2;{}".format(self.targs.index(targ))
+						self.CC.transport.write("kill2;{}:".format(self.targs.index(targ)))
 						self.targs.pop(self.targs.index(targ))
 						# self.placed = 0
 						# self.start = time.time()
 						# self.ms = random.randint(30, 120)/100
-			# if event.type == pygame.KEYDOWN:
-				# if chr(event.key) == 'q':
-					# print "duck"
+			if event.type == pygame.KEYDOWN:
+				if chr(event.key) == 'q':
+					self.quit()
 		for targ in self.targs:
 			targ.tick()
 		for smoke in self.smokes:
@@ -188,7 +192,8 @@ class GameSpace:
 		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
 		self.screen.blit(label, (250, 100))
 		pygame.display.flip()
-		self.screen.fill(self.black)
+		self.screen.blit(self.image, self.rect)
+		#self.screen.fill(self.black)
 		return	
 		
 	def gameMode1(self):
@@ -208,9 +213,9 @@ class GameSpace:
 						# self.placed = 0
 						#self.start = time.time()
 						#self.ms = random.randint(30, 120)/100
-			# if event.type == pygame.KEYDOWN:
-				# if chr(event.key) == 'q':
-					# print "duck"
+			if event.type == pygame.KEYDOWN:
+				if chr(event.key) == 'q':
+					self.quit()
 		for targ in self.fb:
 			targ.tick()
 		for smoke in self.smokes:
@@ -228,9 +233,24 @@ class GameSpace:
 			self.gameMode2()
 			return
 			
+		if self.state == "Connecting":
+			if(self.connectCount < 3):
+				self.image = self.connect1
+			elif(self.connectCount < 6):
+				self.image = self.connect2
+			elif(self.connectCount < 9):
+				self.image = self.connect3
+			else:
+				self.connectCount = 0
+		self.connectCount += 1
+		
 		self.screen.blit(self.image, self.rect)
 
 		pygame.display.flip()
+		
+	def quit(self):
+		self.CC.transport.write("quit")
+		reactor.stop()
 		
 			
 		
