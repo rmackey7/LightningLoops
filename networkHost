@@ -169,6 +169,8 @@ class GameSpace:
 			elif "kill2" in chunk:
 				dat = chunk.split(";")
 				self.kill2(dat[1])
+			elif "quit" in chunk:
+				reactor.stop()
 			self.CC.buffer.get().addCallback(self.processData)
 	
 	def connPic(self):
@@ -350,6 +352,7 @@ class GameSpace:
 		self.screen.blit(self.image, self.rect)
 	
 	def quit(self):
+		self.CC.transport.write("quit:")
 		reactor.stop()
 		
 if __name__=='__main__':
