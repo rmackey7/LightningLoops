@@ -80,7 +80,8 @@ class ClientConnection(Protocol):
 		self.transport.write("host says hello")
 		
 	def dataReceived(self, data):
-		print "into client conn:",data
+		if "kill" in data:
+			self.gs.kill1()
 
 class ClientConnectionFactory(ClientFactory):
 	def __init__(self, gs):
@@ -107,6 +108,7 @@ class GameSpace:
 		self.myfont = pygame.font.Font(None, 35)
 		self.ms = random.randint(30, 120)/100
 		self.placed = 0
+		self.enemyCount = 0
 		
 		self.screen.blit(self.image, self.rect)
 		pygame.display.flip()
@@ -137,6 +139,16 @@ class GameSpace:
 		else:
 			self.connPic()
 	
+	def kill1(self):
+		self.enemyCount += 1
+		for targ in self.fb:
+			self.smokes.add(Smoke(self, targ.rect.center))
+			targ.kill()
+			self.placed = 0
+			self.start = time.time()
+			self.ms = random.randint(30, 120)/100
+
+	
 	def gameMode1(self):
 		if(self.ms < time.time() - self.start and self.placed == 0):
 			self.fb.add(Target(self, random.randint(0, 750), random.randint(0, 550)))
@@ -146,7 +158,6 @@ class GameSpace:
 				for targ in self.fb:
 					if targ.rect.collidepoint(event.pos):
 						self.clickCount += 1
-						#self.smokes.add(Smoke(self, targ.rect.center))
 						self.smokes.add(Fade(self, targ.rect.center))
 						targ.kill()
 						self.CC.transport.write("kill")
@@ -161,8 +172,8 @@ class GameSpace:
 			targ.tick()
 		for smoke in self.smokes:
 			smoke.tick()
-		label = self.myfont.render("Hits: {}".format(self.clickCount), 1, (255, 255, 255))
-		self.screen.blit(label, (350, 100))
+		label = self.myfont.render("Hits: {}     Enemy Hits: {}".format(self.clickCount, self.enemyCount), 1, (255, 255, 255))
+		self.screen.blit(label, (250, 100))
 		pygame.display.flip()
 		self.screen.fill(self.black)	
 				#send ms
