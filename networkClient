@@ -183,13 +183,6 @@ class GameSpace:
 			return
 			
 		self.screen.blit(self.image, self.rect)
-		
-		# for event in pygame.event.get():
-			# if event.type == KEYDOWN:
-				# print "the s word"
-			# if event.type == MOUSEBUTTONDOWN:
-				# if self.state == "Menu":
-					# self.clientWait()
 
 		pygame.display.flip()
 		
