@@ -132,7 +132,7 @@ class GameSpace:
 		self.state = "Ready"	
 		
 	def kill1(self):
-		self.smokes.add(Smoke(self, fb[0].rect.center))
+		self.smokes.add(Smoke(self, self.fb[0].rect.center))
 		self.fb[0].kill()
 		
 	def gameMode1(self):
