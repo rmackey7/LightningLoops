@@ -103,6 +103,9 @@ class ClientConnection(Protocol):
 	#place all incoming data into the buffer
 	def dataReceived(self, data):
 		self.buffer.put(data)
+	
+	def connectionLost(self, reason):
+		reactor.stop()
 
 #produce the connection twisted style
 class ClientConnectionFactory(ClientFactory):

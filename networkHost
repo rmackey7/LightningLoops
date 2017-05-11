@@ -88,7 +88,10 @@ class ClientConnection(Protocol):
 		
 	def dataReceived(self, data):
 		self.buffer.put(data)
-			
+	
+	def connectionLost(self, reason):
+		reactor.stop()
+		
 class ClientConnectionFactory(ClientFactory):
 
 	def __init__(self, gs):
